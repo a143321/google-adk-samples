@@ -58,6 +58,8 @@ graph TD
 
 ADK v2.0 では、会話のコンテキストを維持するために 2 種類の記憶システムを提供しています。これらは明確に使い分ける必要があります。
 
+![Memory Bank Concept](../travel-guide-japan/docs/images/image-memory-bank.png)
+
 | 項目 | セッション (短期記憶 / Short-term Session) | メモリバンク (長期記憶 / Long-term Memory Bank) |
 | :--- | :--- | :--- |
 | **生存期間** | 1つの会話スレッドの開始から終了まで | 明示的に削除しない限り、永続的に保持 |
@@ -92,6 +94,10 @@ root_agent = Agent(
     after_agent_callback=generate_memories_callback  # 会話終了時に記憶を保存するコールバック
 )
 ```
+
+#### ③ 実際の動作イメージ
+![Memory Bank Result](../travel-guide-japan/docs/images/image-memory-bank-result.png)
+
 
 ---
 
