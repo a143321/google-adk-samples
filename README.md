@@ -7,9 +7,11 @@
 
 ## 🚀 システム要件と技術的制約
 
-- **フレームワーク**: **Agent Development Kit (ADK) 2.0 (google-adk>=2.2.0)** を使用しています。
-- **Python**: `3.13` 以上 `3.14` 未満
+- **フレームワーク**: **Agent Development Kit (ADK) 2.0 (`google-adk[gcp]>=2.0.0`)** を使用しています。
+- **Python**: `3.11` 以上 `3.14` 未満（ローカル開発では速度面の利点から **`3.13`** を推奨）
+- **CLI ツール**: [`google-agents-cli`](https://github.com/google/agents-cli) (Python 3.11+ 必須)
 - **パッケージ・環境管理**: `uv` (推奨) もしくは `pip`
+- **クラウド実行環境**: Vertex AI Agent Runtime は Python `3.10` 〜 `3.13` をサポート（本リポジトリの Terraform 設定では `3.12` を指定）
 
 ---
 
@@ -176,15 +178,15 @@ gcloud auth application-default login
 cd basic-search-agent
 make deploy
 ```
-> 💡 **補足**: `make deploy` は内部的に `agents-cli deploy --no-confirm-project` を呼び出すため、対話型の確認プロンプトなしに自動的にデプロイが行われます。
+> 💡 **補足**: `basic-search-agent` の `make deploy` は標準コマンドを呼び出しますが、`travel-guide-japan` ではコンピュート課金を節約（Scale-to-Zero）するため、リソースを抑制するカスタムスクリプト (`deploy.py`) 経由でデプロイが行われます。
 
 ### 📘 詳細な仕組みとトラブルシューティング
-デプロイ時に実行される Terraform（API の有効化、IAM設定、BigQueryを用いたテレメトリ連携など）の詳細やトラブルシューティングについては、[詳細導入ガイド（docs/README.md）](./docs/README.md) を参照してください。
+デプロイ時に実行される Terraform（API の有効化、IAM設定、BigQueryを用いたテレメトリ連携など）の詳細やトラブルシューティングについては、[詳細導入ガイド（docs/ARCHITECTURE.md）](./docs/ARCHITECTURE.md) を参照してください。
 
 ### 💰 コストと課金に関する注意点 (重要)
-本プロジェクトで使用される **Google Search Grounding（Google検索ツール）** は、通常 **1,000クエリあたり約 35 USD** の追加料金が発生します。開発中の頻繁な起動テストや無限ループには十分ご注意ください。
-* 不必要な課金を防ぐため、本サンプルではアイドル時にコンピュート料金がゼロになるよう、Terraform 内で **`min_instances = 0` (Scale-to-Zero)** を設定済みです。
-* テレメトリ保存用の GCS や BigQuery は通常無料枠内に収まりますが、不要になったリソースは削除することを推奨します。詳細は、[詳細導入ガイドの「9. コストに関する注意点」](./docs/README.md#9--cost--billing-cautions) をご確認ください。
+本プロジェクトで使用される **Google Search Grounding（Google検索ツール）** は、月 **5,000 プロンプトの無料枠**を超過すると **1,000クエリあたり $14 USD** の追加料金が発生します（料金は変更される場合があります。最新情報は [Vertex AI 料金ページ](https://cloud.google.com/vertex-ai/generative-ai/pricing) をご確認ください）。開発中の頻繁な起動テストや無限ループには十分ご注意ください。
+* コンピュート課金を防ぐため、本サンプル (`travel-guide-japan`) ではアイドル時に料金がゼロになるよう、Terraform と `deploy.py` の両方で **`min_instances = 0` (Scale-to-Zero)** とメモリ削減 (`2Gi`) を強制設定しています。標準コマンド (`agents-cli deploy`) をそのまま叩くとデフォルトで常時稼働 (`min=1`) となってしまうため、このカスタムスクリプトを経由しています。
+* テレメトリ保存用の GCS や BigQuery は通常無料枠内に収まりますが、不要になったリソースは削除することを推奨します。詳細は、[詳細導入ガイドの「9. コストに関する注意点」](./docs/ARCHITECTURE.md#9--cost--billing-cautions) をご確認ください。
 
 ---
 
@@ -193,6 +195,8 @@ make deploy
 - [ADK 2.0 公式ドキュメント (Welcome to ADK 2.0)](https://adk.dev/2.0/) — ADK v2.0 の新機能やマイグレーション情報
 - [ADK Python クイックスタート (Python Quickstart for ADK)](https://adk.dev/get-started/python/) — 導入手順とシステム要件（Python 3.10+）
 - [google-adk-python GitHub リポジトリ](https://github.com/google/adk-python) — 公式の Python ADK 実装ソースコード
+- [agents-cli Getting Started](https://google.github.io/agents-cli/guide/getting-started/) — CLI セットアップ手順とシステム要件（Python 3.11+）
+- [agents-cli GitHub リポジトリ](https://github.com/google/agents-cli) — CLI のソースコードとリリースノート
 
 ---
 

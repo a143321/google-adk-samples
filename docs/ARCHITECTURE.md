@@ -56,47 +56,10 @@ graph TD
 
 ## 2. セッション (短期記憶) vs メモリバンク (長期記憶)
 
-ADK v2.0 では、会話のコンテキストを維持するために 2 種類の記憶システムを提供しています。これらは明確に使い分ける必要があります。
+ADK v2.0 では、会話のコンテキストを維持するために 2 種類の記憶システムを提供しています。
+詳細な仕様、短期記憶との違い、および具体的なソースコードの実装例については、以下の専用ドキュメントをご参照ください。
 
-![Memory Bank Concept](../travel-guide-japan/docs/images/image-memory-bank.png)
-
-| 項目 | セッション (短期記憶 / Short-term Session) | メモリバンク (長期記憶 / Long-term Memory Bank) |
-| :--- | :--- | :--- |
-| **生存期間** | 1つの会話スレッドの開始から終了まで | 明示的に削除しない限り、永続的に保持 |
-| **格納されるデータ**| 会話の中でやり取りされた生のメッセージ履歴 | 会話から抽出・要約されたユーザーの嗜好、属性、事実 |
-| **動作方式** | Agent Runtime 側で自動的に管理・永続化されます。 | `after_agent_callback` や `PreloadMemoryTool` を介して明示的に保存・読み込みます。 |
-| **管理単位** | `session_id` (会話スレッド単位) | `user_id` (ユーザーアカウント単位) |
-| **ユースケース** | 直前の指示への応答、文脈の理解 | ユーザーの過去の旅行日程やアレルギー、移動手段の好みのパーソナライズ |
-
-### 実装例 (`travel-guide-japan`)
-
-#### ① メモリの自動保存 (コールバック)
-エージェントの応答が完了すると、`generate_memories_callback` が走り、会話イベントがメモリバンクに送られます。
-```python
-async def generate_memories_callback(callback_context: CallbackContext):
-    # 直近のイベント（ユーザーの発言やエージェントの返答）をメモリに保存
-    await callback_context.add_events_to_memory(
-        events=callback_context.session.events[-5:-1]
-    )
-```
-
-#### ② メモリの自動読み込み (ツール)
-新しい会話が始まると、エージェント定義内の `PreloadMemoryTool()` が自動的にメモリバンクから `user_id` に紐づく記憶をロードし、Gemini のシステム指示（システムプロンプト）に文脈として組み込みます。
-```python
-root_agent = Agent(
-    name="japan_guide",
-    model=Gemini(model="gemini-2.5-flash"),
-    tools=[
-        AgentTool(agent=search_agent),
-        AgentTool(agent=weather_agent),
-        PreloadMemoryTool(),                         # 記憶を自動的にロードするツール
-    ],
-    after_agent_callback=generate_memories_callback  # 会話終了時に記憶を保存するコールバック
-)
-```
-
-#### ③ 実際の動作イメージ
-![Memory Bank Result](../travel-guide-japan/docs/images/image-memory-bank-result.png)
+👉 **[詳細解説: セッション vs メモリバンク（MEMORY.md）](./MEMORY.md)**
 
 
 ---
@@ -322,23 +285,21 @@ deploy:
 
 ### 1. Google Search Grounding (Web検索ツール) の料金 (最重要)
 * **概要**: エージェント（`search_agent` や `food_agent` 等）は、最新情報を得るために **Google Search Grounding（Google検索 grounding）** ツールを使用しています。
-* **課金ルール**: Vertex AI において Google Search Grounding を有効にしたリクエストは、通常 **1,000クエリあたり約 35 USD（1クエリあたり約 0.035 USD）** の追加料金が発生します。
+* **課金ルール**: Vertex AI において Google Search Grounding を有効にしたリクエストは、月 **5,000 プロンプトの無料枠**を超過すると **1,000クエリあたり $14 USD（1クエリあたり約 $0.014 USD）** の追加料金が発生します（料金は変更される場合があります。最新情報は [Vertex AI 料金ページ](https://cloud.google.com/vertex-ai/generative-ai/pricing) をご確認ください）。
 * **注意点**: 開発の初期テストやループ処理のデバッグでエージェントを何度も起動してテストを行うと、想定外の金額が課金される恐れがあります。検証時には意図しない連投や無限ループに陥らないよう監視してください。
 
-### 2. コンピュート料金と Scale-to-Zero (`min_instances = 0`)
-* **概要**: Vertex AI Reasoning Engine (Agent Runtime) は Cloud Run 上にホストされます。
-* **最適化済み**: 本プロジェクトでは、Terraform の `service.tf` 内で `min_instances` をデフォルトの `1` から **`0`（ゼロ）** に変更しています。これにより、エージェントが呼び出されていない（アイドル状態の）間は、**実行コンピュート料金は完全にゼロ**になります。
+### 2. コンピュート料金とカスタムデプロイ (`deploy.py`) による Scale-to-Zero
+* **概要**: Vertex AI Reasoning Engine (Agent Runtime) は Cloud Run 上にホストされます。標準の `agents-cli deploy` コマンドを使用すると、デフォルトで「常時稼働（`min-instances=1`）」と「メモリ 4Gi」が割り当てられ、アイドル時でもコンピュート料金が発生します。
+* **最適化済み**: これを防ぐため、応用プロジェクト (`travel-guide-japan`) では `make deploy` 実行時に独自の **`deploy.py`** スクリプトを経由する設計にしています。このスクリプトが裏側で `--min-instances=0` (Scale-to-Zero) とメモリ削減 (`2Gi`) を強制指定し、Terraform の設定が標準デフォルト値で上書きされないように守ることで、アイドル時の**コンピュート料金が完全にゼロ**になるよう最適化されています。
 
 ### 3. ストレージ料金とクリーンアップ対策 (GCS & BigQuery)
 * **概要**: テレメトリ（動作記録・監視データ）を格納するために Cloud Storage および BigQuery にデータが保管されます。
 * **BigQuery 削除対策**: 通常、ログシンク経由で自動生成されたテーブルを含む BigQuery データセットは、空ではないため `terraform destroy` 時にエラーで削除に失敗します。本プロジェクトではこれを防ぐため、両プロジェクトの `telemetry.tf` 内で **`delete_contents_on_destroy = true`** を指定し、リソースのクリーンアップが正常に行えるよう配慮しています。
 * **注意点**: 不要になったインフラは `terraform destroy` などで削除することをお勧めします。
 
-### 4. Python バージョンの不一致に注意
-* **概要**: ローカル環境では `pyproject.toml` に基づき Python 3.13 などの最新バージョンで開発・テストを実行できますが、Vertex AI Reasoning Engine (Agent Runtime) のクラウド環境は Python **`3.12`** に固定されています (`service.tf` 内の `python_spec.version` 参照)。
-* **注意点**: ローカルで Python 3.13 特有の文法やライブラリ機能を使用した場合、ローカルテストは通ってもクラウドデプロイ後に実行時エラーが発生する可能性があります。互換性を保つため、極力 Python 3.12 の範囲で動作するコードを記述してください。
 
-### 5. 新規ライブラリ追加時の依存関係の同期
+
+### 4. 新規ライブラリ追加時の依存関係の同期
 * **概要**: `google-agents-cli` のデプロイプロセスは、ローカルの Python環境ではなく、`pyproject.toml` に定義された依存関係を自動的に収集してクラウドに転送します。
 * **注意点**: ローカル環境でパッケージを追加した場合（例: `uv add`）、必ず `pyproject.toml` に依存関係が書き込まれていることを確認してください。書き込まれていない場合、デプロイ後の実行時に `ModuleNotFoundError` となります。また、C拡張などを必要とする OS 依存の重いライブラリはデプロイ時にビルドエラーとなる可能性があるため、注意してください。
 

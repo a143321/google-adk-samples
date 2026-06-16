@@ -203,3 +203,6 @@ my_env.tfvars
 tools/a2a-inspector/
 **/deployment_metadata.json
 **/env.tfvars
+
+# ADK Local State
+**/.adk/

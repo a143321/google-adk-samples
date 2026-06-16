@@ -1,86 +1,28 @@
 # travel-guide-japan
 
-Simple ReAct agent
-Agent generated with `agents-cli` version `0.4.0`
+シンプルな ReAct エージェント
+`agents-cli` バージョン `0.4.0` を用いて生成されたエージェント
 
-## Project Structure
+## プロジェクト構造
 
 ```
 travel-guide-japan/
-├── app/         # Core agent code
-│   ├── agent.py               # Main agent logic
-│   ├── agent_runtime_app.py    # Agent Runtime application logic
-│   └── app_utils/             # App utilities and helpers
-├── tests/                     # Unit, integration, and load tests
-├── GEMINI.md                  # AI-assisted development guide
-└── pyproject.toml             # Project dependencies
+├── app/         # エージェントのコアコード
+│   ├── agent.py               # エージェントのメインロジック
+│   ├── agent_runtime_app.py    # Agent Runtime アプリケーションロジック
+│   └── app_utils/             # アプリケーションのユーティリティとヘルパー
+├── tests/                     # ユニットテスト、統合テスト、負荷テスト
+├── GEMINI.md                  # AI支援開発用ガイド（プロンプト・コンテキスト）
+└── pyproject.toml             # プロジェクトの依存関係定義
 ```
 
-> 💡 **Tip:** Use [Gemini CLI](https://github.com/google-gemini/gemini-cli) for AI-assisted development - project context is pre-configured in `GEMINI.md`.
+> 💡 **ヒント:** AI支援開発には [Gemini CLI](https://github.com/google-gemini/gemini-cli) を使用してください。本プロジェクトの文脈やルールはあらかじめ `GEMINI.md` に設定されています。
 
-## Requirements
+## 開発・実行手順
 
-Before you begin, ensure you have:
-- **uv**: Python package manager (used for all dependency management in this project) - [Install](https://docs.astral.sh/uv/getting-started/installation/) ([add packages](https://docs.astral.sh/uv/concepts/dependencies/) with `uv add <package>`)
-- **agents-cli**: Agents CLI - Install with `uv tool install google-agents-cli`
-- **Google Cloud SDK**: For GCP services - [Install](https://cloud.google.com/sdk/docs/install)
+本プロジェクトの実行環境の要件（Python 3.13等）、前提条件ツールのインストール方法、およびローカル起動（Playground）や基本コマンド群については、リポジトリルートの **[README.md](../README.md)** をご参照ください。
 
-> ⚠️ **Note for Cloned Repositories**: 
-> If you are cloning this repository to deploy it to your own Google Cloud project:
-> 1. For Terraform deployments, copy `deployment/terraform/single-project/vars/env.tfvars.example` to `env.tfvars` and set your `project_id`.
-> 2. `deployment_metadata.json` will be automatically generated upon your first successful `make deploy`.
-
-
-
-## Quick Start
-
-Install `agents-cli` and its skills if not already installed:
-
-```bash
-uvx google-agents-cli setup
-```
-
-Install required packages:
-
-```bash
-agents-cli install
-```
-
-Test the agent with a local web server:
-
-```bash
-agents-cli playground
-```
-
-You can also use features from the [ADK](https://adk.dev/) CLI with `uv run adk`.
-
-## Commands
-
-| Command              | Description                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------- |
-| `agents-cli install` | Install dependencies using uv                                                         |
-| `agents-cli playground` | Launch local development environment                                                  |
-| `agents-cli lint`    | Run code quality checks                                                               |
-| `agents-cli eval`    | Evaluate agent behavior (generate, grade, analyze, and more — see `agents-cli eval --help`) |
-| `uv run pytest tests/unit tests/integration` | Run unit and integration tests                                                        |
-| `agents-cli deploy`  | Deploy agent to Agent Runtime                                                                |
-| `agents-cli publish gemini-enterprise` | Register deployed agent to Gemini Enterprise                    |
-
-## 🛠️ Project Management
-
-| Command | What It Does |
-|---------|--------------|
-| `agents-cli scaffold enhance` | Add CI/CD pipelines and Terraform infrastructure |
-| `agents-cli infra cicd` | One-command setup of entire CI/CD pipeline + infrastructure |
-| `agents-cli scaffold upgrade` | Auto-upgrade to latest version while preserving customizations |
-
----
-
-## Development
-
-Edit your agent logic in `app/agent.py` and test with `agents-cli playground` - it auto-reloads on save.
-
-## Deployment
+## デプロイ
 
 ```bash
 gcloud config set project <your-project-id>
@@ -92,73 +34,39 @@ make deploy
 make deploy ARGS="--cpu 2 --memory 4Gi --min-instances 1 --max-instances 5"
 ```
 
-To add CI/CD and Terraform, run `agents-cli scaffold enhance`.
-To set up your production infrastructure, run `agents-cli infra cicd`.
+CI/CD や Terraform を追加する場合は `agents-cli scaffold enhance` を実行してください。
+本番用のインフラを自動構築する場合は `agents-cli infra cicd` を実行してください。
 
 ## セッション (短期記憶) vs メモリバンク (長期記憶)
 
-ADK v2.0 では、会話のコンテキストを維持するために 2 種類の記憶システムを提供しています。これらは明確に使い分ける必要があります。
+ADK v2.0 では、通常の「セッション（会話スレッドごとの短期記憶）」に加えて、ユーザー単位で恒久的に文脈を学習する「**メモリバンク（長期記憶）**」という強力な機能が提供されています。
 
-![Memory Bank Concept](docs/images/image-memory-bank.png)
+本プロジェクトでの具体的な実装例や、短期記憶との違いについての詳しい解説は、ルートディレクトリの **[詳細解説: セッション vs メモリバンク（docs/MEMORY.md）](../docs/MEMORY.md)** をご参照ください。
 
-| 項目 | セッション (短期記憶 / Short-term Session) | メモリバンク (長期記憶 / Long-term Memory Bank) |
-| :--- | :--- | :--- |
-| **生存期間** | 1つの会話スレッドの開始から終了まで | 明示的に削除しない限り、永続的に保持 |
-| **格納されるデータ**| 会話の中でやり取りされた生のメッセージ履歴 | 会話から抽出・要約されたユーザーの嗜好、属性、事実 |
-| **動作方式** | Agent Runtime 側で自動的に管理・永続化されます。 | `after_agent_callback` や `PreloadMemoryTool` を介して明示的に保存・読み込みます。 |
-| **管理単位** | `session_id` (会話スレッド単位) | `user_id` (ユーザーアカウント単位) |
-| **ユースケース** | 直前の指示への応答、文脈の理解 | ユーザーの過去の旅行日程やアレルギー、移動手段の好みのパーソナライズ |
+## アーキテクチャの工夫: サブエージェントによる検索の分離
 
-### 実装例 (`travel-guide-japan`)
+本プロジェクトでは、ADK v2 の機能を活用し、Google 検索専用のサブエージェント（`search_agent` など）を定義し、親エージェント（`root_agent`）から Function Calling として呼び出す**「検索コンテキストの分離アーキテクチャ」**を採用しています。
 
-#### ① メモリの自動保存 (コールバック)
-エージェントの応答が完了すると、`generate_memories_callback` が走り、会話イベントがメモリバンクに送られます。
-```python
-async def generate_memories_callback(callback_context: CallbackContext):
-    # 直近のイベント（ユーザーの発言やエージェントの返答）をメモリに保存
-    await callback_context.add_events_to_memory(
-        events=callback_context.session.events[-5:-1]
-    )
-```
+この設計を採用している背景には、エンタープライズ特有のコンプライアンス要件と API の仕様が深く関係しています。
 
-#### ② メモリの自動読み込み (ツール)
-新しい会話が始まると、エージェント定義内の `PreloadMemoryTool()` が自動的にメモリバンクから `user_id` に紐づく記憶をロードし、Gemini のシステム指示（システムプロンプト）に文脈として組み込みます。
-```python
-root_agent = Agent(
-    name="japan_guide",
-    model=Gemini(model="gemini-2.5-flash"),
-    tools=[
-        AgentTool(agent=search_agent),
-        AgentTool(agent=weather_agent),
-        PreloadMemoryTool(),                         # 記憶を自動的にロードするツール
-    ],
-    after_agent_callback=generate_memories_callback  # 会話終了時に記憶を保存するコールバック
-)
-```
+- **データレジデンシー（地域制限）と API の制約**
+  最新の Gemini 3 シリーズでは、1つのエージェント内で「Google Search Grounding（Web検索）」と「Function Calling（カスタムツール）」を同時に利用することが公式にサポートされています。しかし、検索機能を利用すると**クロスジオグラフィー・ルーティング（米国などのグローバルインフラへの一時的なデータ転送）** が発生する可能性があります。
+  金融や官公庁など、データが日本国内（`asia-northeast1`）から外に出ることをポリシー上許可できない厳格な要件下では、地域固定が保証された **Gemini 2.5 などの特定モデル** を採用する必要があります。しかし、これらの要件下では両機能の「同時利用制限」に抵触してしまうというジレンマがありました。
 
-#### ③ 実際の動作イメージ
-![Memory Bank Result](docs/images/image-memory-bank-result.png)
+- **エンタープライズ・ベストプラクティスとしてのオーケストレーション**
+  このコンプライアンス要件と技術的制約をエレガントに解決するための推奨アーキテクチャが、本プロジェクトで実装されている手法です。
+  1. **サブエージェントへの委譲**: `tools=[google_search]` のみを持つ検索タスク特化のサブエージェントを作成する。
+  2. **親エージェントの専念**: 親は検索ツールを直接持たず、代わりに `AgentTool(agent=search_agent)` の形でサブエージェントを**関数呼び出し**として実行する。
 
-## Observability
+これにより、厳格なデータレジデンシー（地域制限）要件を遵守するためのモデル制約をクリアしつつ、自動関数呼び出し（AFC）による予期せぬエラーも防ぐことができます。さらに、検索の役割（グルメ専用、宿泊専用など）を細分化することで、エージェントの自律性と表現力を最大限に引き出すことが可能になっています。
 
-Built-in telemetry exports to Cloud Trace, BigQuery, and Cloud Logging.
+## オブザーバビリティ (監視・分析)
 
-## Troubleshooting (ハマったポイント)
+Cloud Trace、BigQuery、Cloud Logging への組み込みテレメトリ・エクスポート機能を備えており、エージェントの挙動を詳細に分析可能です。
 
-今回の開発・デプロイにおいて直面したエラーとその解決策の備忘録です。
 
-### 1. `deploy.py` 実行時の `ModuleNotFoundError`
-- **症状**: `make deploy`（実態は `uv run python deploy.py`）を実行すると、`ModuleNotFoundError: No module named 'google.agents'` というエラーが発生。
-- **原因**: `deploy.py` 内で `google.agents.cli` をインポートしていますが、`uv run` はローカルの仮想環境（`.venv`）のみを参照するため、グローバルに `uvx` でインストールされたCLIモジュールが見つからなかったため。
-- **解決策**: `Makefile` の `deploy` ターゲットを `uv run --with google-agents-cli python deploy.py` に変更し、実行時に必要なパッケージを動的に解決させるようにしました。
 
-### 2. コード編集時の `IndentationError` と文字化け
-- **症状**: `app/agent.py` にて `IndentationError: unindent does not match any outer indentation level` が発生し、`make test` 等がすべて失敗。修復を試みる過程で文字化けも併発。
-- **原因**: 手作業でのコード編集やコピペのミスにより、`get_jma_weather` 関数内の `try:` ブロックに対する `except` ブロックと関数の末尾 `return` 文が欠落してしまったため。
-- **解決策**: 欠落していた `except Exception as e:` ブロックとエラー時の `return` 文を正しいインデント位置で復元し、構文エラーを解消しました。
-
-## Execution Results
+## 実行結果
 
 ![実行結果1](docs/images/result-image1.png)
 ![実行結果2](docs/images/result-image2.png)
-
