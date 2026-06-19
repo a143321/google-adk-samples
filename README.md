@@ -35,6 +35,14 @@
   - **Memory Bank（長期記憶）の統合**: ユーザーの過去の会話から旅行日程や食事の好み（アレルギー等）、移動手段（レンタカー等）の嗜好を自動的に Memory Bank へ記憶し、次回以降の提案をパーソナライズします。
 - **目的**: 実際のプロダクション開発を想定し、カスタムメモリトピック定義 (`update.py`) や自動品質評価（ADK Eval）を含み、より高度なユースケースに対応します。
 
+### 3. [room-5s-agent (画像認識＆協調エージェントプロジェクト)](./room-5s-agent/)
+- **フォルダ名**: `room-5s-agent`
+- **概要**: 画像認識（Vision）と複数の専門サブエージェントを組み合わせた5S（整理・整頓・清掃・清潔・躾）チェックシステム。
+- **機能**:
+  - **マルチモーダル入力**: Playgroundから画像をアップロードし、GeminiのVision機能で部屋やデスクの散らかり具合をテキスト化します。
+  - **4エージェント・オーケストレーション**: 画像を解析する `root_agent` を起点に、採点を行う `scoring_agent`、改善策を検索する `search_agent`、最終レポートを清書する `report_agent` へとバケツリレー形式で処理を委譲します。
+- **目的**: `AgentTool` を用いた「関心の分離」のベストプラクティスと、マルチモーダル入力を使った実践的なワークフローを学びます。
+
 ---
 
 ## 💡 ADK v2.0 を採用する理由とテストの容易性
@@ -154,6 +162,20 @@ make playground      # または uvx google-agents-cli playground
 make test            # または uv run pytest
 ```
 
+### 3. 画像認識プロジェクト (room-5s-agent) の実行
+```bash
+cd room-5s-agent
+
+# 依存関係のインストール
+make install         # または uvx google-agents-cli install
+
+# ローカル Web UI (Playground) の起動
+make playground      # または uvx google-agents-cli playground
+
+# テストの実行
+make test            # または uv run pytest
+```
+
 ---
 
 ## ☁️ Google Cloud へのデプロイ手順 (Deployment)
@@ -172,13 +194,13 @@ gcloud auth application-default login
 ```
 
 ### 2. デプロイの実行
-各プロジェクトフォルダ（`basic-search-agent` または `travel-guide-japan`）に移動し、`make deploy` を実行します。
+各プロジェクトフォルダ（`basic-search-agent`、`travel-guide-japan`、または `room-5s-agent`）に移動し、`make deploy` を実行します。
 
 ```bash
 cd basic-search-agent
 make deploy
 ```
-> 💡 **補足**: `basic-search-agent` の `make deploy` は標準コマンドを呼び出しますが、`travel-guide-japan` ではコンピュート課金を節約（Scale-to-Zero）するため、リソースを抑制するカスタムスクリプト (`deploy.py`) 経由でデプロイが行われます。
+> 💡 **補足**: `basic-search-agent` の `make deploy` は標準コマンドを呼び出しますが、`travel-guide-japan` と `room-5s-agent` ではコンピュート課金を節約（Scale-to-Zero）するため、リソースを抑制するカスタムスクリプト (`deploy.py`) 経由でデプロイが行われます。
 
 ### 📘 詳細な仕組みとトラブルシューティング
 デプロイ時に実行される Terraform（API の有効化、IAM設定、BigQueryを用いたテレメトリ連携など）の詳細やトラブルシューティングについては、[詳細導入ガイド（docs/ARCHITECTURE.md）](./docs/ARCHITECTURE.md) を参照してください。
